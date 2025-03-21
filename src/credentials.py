@@ -12,6 +12,3 @@ if os.path.exists(env_path):
 # Fetch environment variables
 _TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 _USERNAME = os.getenv("TELEGRAM_BOT_USERNAME")
-
-print(_TOKEN)
-print(_USERNAME)
