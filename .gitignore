@@ -1,0 +1,3 @@
+.env
+telegram_bot.db
+src/__pycache__/
