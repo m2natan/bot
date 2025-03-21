@@ -1,11 +1,11 @@
-from credentials import _TOKEN
+from src.credentials import _TOKEN
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
-from functions.weekend_assignments import generate_weekend_assignments
-from functions.cart_witness import generate_public_cart_witness
-from functions.assignments import generate_assignments
+from src.functions.weekend_assignments import generate_weekend_assignments
+from src.functions.cart_witness import generate_public_cart_witness
+from src.functions.assignments import generate_assignments
 # Import database functions
-from database import init_db, save_user, update_user, user_exists, get_user_by_telegram_id
+from src.database import init_db, save_user, update_user, user_exists, get_user_by_telegram_id
 
 # Initialize database
 init_db()
@@ -178,5 +178,5 @@ def main():
     print("Bot is running...")
     application.run_polling()
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
