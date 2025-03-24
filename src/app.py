@@ -6,9 +6,74 @@ from src.functions.cart_witness import generate_public_cart_witness
 from src.functions.assignments import generate_assignments
 # Import database functions
 from src.database import init_db, save_user, update_user, user_exists, get_user_by_telegram_id
+import os
+from datetime import datetime
 
 # Initialize database
 init_db()
+
+UPLOAD_DIR = "_uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+async def handle_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle file uploads and return file information"""
+    
+    # Check if there's a file in the message
+    if not update.message.document and not update.message.photo:
+        await update.message.reply_text("Please send a file or photo with the /upload command")
+        return
+
+    try:
+        # Create user-specific directory
+        user_id = update.effective_user.id
+        user_dir = os.path.join(UPLOAD_DIR, str(user_id))
+        if not os.path.exists(user_dir):
+            os.makedirs(user_dir)
+
+        # Get current timestamp for unique filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        if update.message.document:
+            # Handle document upload
+            file = await context.bot.get_file(update.message.document.file_id)
+            original_filename = update.message.document.file_name
+            file_extension = os.path.splitext(original_filename)[1]
+            new_filename = f"{timestamp}{file_extension}"
+            file_path = os.path.join(user_dir, new_filename)
+            
+            # Download the file
+            await file.download_to_drive(file_path)
+            
+            # Send confirmation with file details
+            await update.message.reply_text(
+                "✅ File uploaded successfully!\n\n"
+                f"📁 Original filename: {original_filename}\n"
+                f"📂 Saved as: {new_filename}\n"
+                f"📍 Directory: {user_dir}\n"
+                f"🔗 Full path: {file_path}"
+            )
+
+        elif update.message.photo:
+            # Handle photo upload (get the highest quality version)
+            photo = update.message.photo[-1]
+            file = await context.bot.get_file(photo.file_id)
+            new_filename = f"{timestamp}.jpg"
+            file_path = os.path.join(user_dir, new_filename)
+            
+            # Download the photo
+            await file.download_to_drive(file_path)
+            
+            # Send confirmation with file details
+            await update.message.reply_text(
+                "✅ Photo uploaded successfully!\n\n"
+                f"📸 Saved as: {new_filename}\n"
+                f"📍 Directory: {user_dir}\n"
+                f"🔗 Full path: {file_path}"
+            )
+
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error during upload: {str(e)}")
 
 def get_button_keyboard():
     """Create raised buttons keyboard"""
@@ -143,7 +208,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Commands:\n"
         "/start - Start the bot\n"
         "/help - Show this help message\n"
-        "/status - Show your saved information"
+        "/status - Show your saved information\n"
+        "/upload - Saves a file to process it"
     )
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -171,6 +237,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status_command))
+    application.add_handler(CommandHandler("upload", handle_upload))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_info))
     application.add_handler(CallbackQueryHandler(button_callback))
 
