@@ -1,13 +1,24 @@
-from src.credentials import _TOKEN
+from credentials import _TOKEN
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
-from src.functions.weekend_assignments import generate_weekend_assignments
-from src.functions.cart_witness import generate_public_cart_witness
-from src.functions.assignments import generate_assignments
+from functions.weekend_assignments import generate_weekend_assignments
+from functions.cart_witness import generate_public_cart_witness
+from functions.assignments import generate_assignments
 # Import database functions
-from src.database import init_db, save_user, update_user, user_exists, get_user_by_telegram_id
+from database import init_db, save_user, update_user, user_exists, get_user_by_telegram_id
 import os
 from datetime import datetime
+from fastapi import FastAPI
+from telegram.ext import Application
+import asyncio
+import uvicorn
+
+# FastAPI app
+app = FastAPI()
+
+@app.get("/")
+async def read_root():
+    return {"message": "Hello World"}
 
 # Initialize database
 init_db()
@@ -87,7 +98,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check if user already exists
     user_telegram_id = update.effective_user.id
     user = get_user_by_telegram_id(user_telegram_id)
-    
     if user:
         await update.message.reply_text(
             f"😁 {user['fullname']}! You can update your information anytime."
@@ -195,9 +205,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "How to use this bot:\n\n"
         "Quick Actions:\n"
-        "🔵 Button 1 - Quick action 1\n"
-        "🟢 Button 2 - Quick action 2\n"
-        "🔴 Button 3 - Quick action 3\n\n"
+        "📢🛒 - Public cart witness\n"
+        "🌞📅 - Sunday Assignment\n"
+        "✅✔️ - Congregation Assignments\n\n"
         "Information Input:\n"
         "1. Send your information in exactly 3 lines\n"
         "2. Each piece of information should be on a new line\n"
@@ -214,7 +224,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show current saved information"""
-    saved_info = context.user_data.get('saved_info', None)
+    user_telegram_id = update.effective_user.id
+    saved_info = get_user_by_telegram_id(user_telegram_id)
     
     if saved_info:
         await update.message.reply_text(
@@ -229,10 +240,10 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Please send your information in the required format."
         )
 
-def main():
+async def run_bot():
+    print("Starting Telegram bot...")  # Debugging print
     # Create the application with your bot token
     application = Application.builder().token(_TOKEN).build()
-
     # Add handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -241,9 +252,28 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_info))
     application.add_handler(CallbackQueryHandler(button_callback))
 
-    # Start the bot
-    print("Bot is running...")
-    application.run_polling()
+    # Start the bot in non-blocking mode
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()  # Start polling for updates
+    print("Bot is running... .. ..")
 
-# if __name__ == '__main__':
-#     main()
+    # Keep the bot running
+    while True:
+        await asyncio.sleep(1)
+
+# Run both FastAPI and the bot
+async def run_all():
+    # Start the bot in the background
+    bot_task = asyncio.create_task(run_bot())
+
+    # Start the FastAPI server
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, reload=True)
+    server = uvicorn.Server(config)
+    await server.serve()
+
+    # Wait for the bot task to complete (though it likely won't)
+    await bot_task
+
+if __name__ == "__main__":
+    asyncio.run(run_all())

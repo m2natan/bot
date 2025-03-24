@@ -1,6 +1,13 @@
 import uuid
 import pandas as pd
-from src.constants import months
+import sys
+import os
+
+# Get the parent directory and add it to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# Now you can import
+from constants import months
 def generate_assignments(update, context):
 
     return
