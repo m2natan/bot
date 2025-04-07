@@ -18,7 +18,7 @@ def audio_video_schedule(name_to_search, df ):
   for col in df.columns:
       for index, value in df[col].items():
           for name in name_to_search:
-              if name in value:
+              if name in re.sub(r'\s*ና$', '', value):
                 found_on.append((index, col))
   return found_on
 
